@@ -45,7 +45,7 @@ Use the provided scripts to deploy the infrastructure using your local command l
 
 1.  **Clone the repository**:
     ```bash
-    git clone https://github.com/YOUR_GITHUB_ORG_OR_USER/YOUR_REPO.git
+    git clone https://github.com/BloodliveMSFT/adf-sharepoint-lab.git
     cd YOUR_REPO
     ```
 
