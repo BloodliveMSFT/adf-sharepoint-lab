@@ -35,9 +35,9 @@ You have two options for deploying the necessary Azure resources.
 
 This is the simplest method. Click the button below to deploy the Azure Data Factory with a system-assigned managed identity and the required RBAC role assignment on your storage account.
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FYOUR_GITHUB_ORG_OR_USER%2FYOUR_REPO%2Fmain%2Fazuredeploy.json)
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FBloodliveMSFT%2Fadf-sharepoint-lab%2Fmain%2Fazuredeploy.json)
 
-> **Note**: You must fork this repository and update the link above to point to the `azuredeploy.json` file in your own repository's `main` branch.
+> **Note**: When you fork this repository, the Deploy-to-Azure button will be automatically updated to point to your forked repository via GitHub Actions. No manual changes needed!
 
 ### Option B: CLI Deployment
 
@@ -46,7 +46,7 @@ Use the provided scripts to deploy the infrastructure using your local command l
 1.  **Clone the repository**:
     ```bash
     git clone https://github.com/BloodliveMSFT/adf-sharepoint-lab.git
-    cd YOUR_REPO
+    cd adf-sharepoint-lab
     ```
 
 2.  **Run the deployment script**:

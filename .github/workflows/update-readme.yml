@@ -1,0 +1,55 @@
+name: Update README with Repository Info
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Update README with dynamic repository information
+        run: |
+          # Extract owner and repo name from GITHUB_REPOSITORY
+          REPO_OWNER="${GITHUB_REPOSITORY%/*}"
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          
+          echo "Repository Owner: $REPO_OWNER"
+          echo "Repository Name: $REPO_NAME"
+          
+          # Update Deploy-to-Azure button URL
+          sed -i "s|https://raw.githubusercontent.com/[^/]*/[^/]*/main/azuredeploy.json|https://raw.githubusercontent.com/$REPO_OWNER/$REPO_NAME/main/azuredeploy.json|g" README.md
+          
+          # Update git clone command
+          sed -i "s|git clone https://github.com/[^/]*/[^/]*.git|git clone https://github.com/$REPO_OWNER/$REPO_NAME.git|g" README.md
+          
+          # Update cd command
+          sed -i "s|cd [a-zA-Z0-9_-]*$|cd $REPO_NAME|g" README.md
+          
+      - name: Check if changes were made
+        id: check_changes
+        run: |
+          if git diff --quiet README.md; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Commit and push if changed
+        if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add README.md
+          git commit -m "Auto-update README with repository information [skip ci]"
+          git push
