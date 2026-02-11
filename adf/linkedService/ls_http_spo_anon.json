@@ -1,0 +1,20 @@
+{
+  "name": "ls_http_spo_anon",
+  "type": "Microsoft.DataFactory/factories/linkedservices",
+  "properties": {
+    "type": "HttpServer",
+    "parameters": {
+      "pSharePointHost": {
+        "type": "string"
+      }
+    },
+    "typeProperties": {
+      "url": {
+        "value": "@concat('https://', linkedService().pSharePointHost, '/')",
+        "type": "Expression"
+      },
+      "enableServerCertificateValidation": true,
+      "authenticationType": "Anonymous"
+    }
+  }
+}

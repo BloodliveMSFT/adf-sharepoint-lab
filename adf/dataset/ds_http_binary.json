@@ -1,0 +1,32 @@
+{
+  "name": "ds_http_binary",
+  "type": "Microsoft.DataFactory/factories/datasets",
+  "properties": {
+    "type": "Binary",
+    "linkedServiceName": {
+      "referenceName": "ls_http_spo_anon",
+      "type": "LinkedServiceReference",
+      "parameters": {
+        "pSharePointHost": {
+          "value": "@pipeline().parameters.pSharePointHost",
+          "type": "Expression"
+        }
+      }
+    },
+    "parameters": {
+      "pRelativeUrl": {
+        "type": "string"
+      }
+    },
+    "typeProperties": {
+      "location": {
+        "type": "HttpServerLocation",
+        "relativeUrl": {
+          "value": "@dataset().pRelativeUrl",
+          "type": "Expression"
+        }
+      }
+    },
+    "schema": []
+  }
+}

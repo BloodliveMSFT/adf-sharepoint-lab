@@ -1,0 +1,46 @@
+{
+  "name": "ds_adls_binary",
+  "type": "Microsoft.DataFactory/factories/datasets",
+  "properties": {
+    "type": "Binary",
+    "linkedServiceName": {
+      "referenceName": "ls_adls_mi",
+      "type": "LinkedServiceReference",
+      "parameters": {
+        "pStorageAccountName": {
+          "value": "@pipeline().parameters.pStorageAccountName",
+          "type": "Expression"
+        }
+      }
+    },
+    "parameters": {
+      "pContainer": {
+        "type": "string"
+      },
+      "pDirectory": {
+        "type": "string"
+      },
+      "pFileName": {
+        "type": "string"
+      }
+    },
+    "typeProperties": {
+      "location": {
+        "type": "AzureBlobFSLocation",
+        "fileName": {
+          "value": "@dataset().pFileName",
+          "type": "Expression"
+        },
+        "folderPath": {
+          "value": "@dataset().pDirectory",
+          "type": "Expression"
+        },
+        "fileSystem": {
+          "value": "@dataset().pContainer",
+          "type": "Expression"
+        }
+      }
+    },
+    "schema": []
+  }
+}

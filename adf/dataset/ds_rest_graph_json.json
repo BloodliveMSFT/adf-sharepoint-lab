@@ -1,0 +1,44 @@
+{
+  "name": "ds_rest_graph_json",
+  "type": "Microsoft.DataFactory/factories/datasets",
+  "properties": {
+    "type": "RestResource",
+    "linkedServiceName": {
+      "referenceName": "ls_rest_graph_oauth",
+      "type": "LinkedServiceReference",
+      "parameters": {
+        "pTenantId": {
+          "value": "@pipeline().parameters.pTenantId",
+          "type": "Expression"
+        },
+        "pClientId": {
+          "value": "@pipeline().parameters.pClientId",
+          "type": "Expression"
+        },
+        "pClientSecret": {
+          "value": "@pipeline().parameters.pClientSecret",
+          "type": "Expression"
+        },
+        "pScope": {
+          "value": "@pipeline().parameters.pScope",
+          "type": "Expression"
+        }
+      }
+    },
+    "parameters": {
+      "pRelativeUrl": {
+        "type": "string"
+      }
+    },
+    "typeProperties": {
+      "relativeUrl": {
+        "value": "@dataset().pRelativeUrl",
+        "type": "Expression"
+      },
+      "paginationRules": {
+        "AbsoluteUrl": "$['@odata.nextLink']"
+      }
+    },
+    "schema": []
+  }
+}

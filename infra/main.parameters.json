@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "eastus"
+    },
+    "factoryName": {
+      "value": "adf-spo-to-adls"
+    },
+    "gitAccountName": {
+      "value": "YOUR_GITHUB_ORG_OR_USER"
+    },
+    "gitRepositoryName": {
+      "value": "YOUR_REPO"
+    },
+    "gitCollaborationBranch": {
+      "value": "main"
+    },
+    "gitRootFolder": {
+      "value": "/adf"
+    },
+    "gitPublishBranch": {
+      "value": "adf_publish"
+    },
+    "storageAccountId": {
+      "value": ""
+    }
+  }
+}

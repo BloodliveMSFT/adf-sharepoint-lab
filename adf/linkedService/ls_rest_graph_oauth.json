@@ -1,0 +1,42 @@
+{
+  "name": "ls_rest_graph_oauth",
+  "type": "Microsoft.DataFactory/factories/linkedservices",
+  "properties": {
+    "type": "RestService",
+    "parameters": {
+      "pTenantId": {
+        "type": "string"
+      },
+      "pClientId": {
+        "type": "string"
+      },
+      "pClientSecret": {
+        "type": "string"
+      },
+      "pScope": {
+        "type": "string"
+      }
+    },
+    "typeProperties": {
+      "url": "https://graph.microsoft.com/",
+      "enableServerCertificateValidation": true,
+      "authenticationType": "OAuth2ClientCredential",
+      "tokenEndpoint": {
+        "value": "@concat('https://login.microsoftonline.com/', linkedService().pTenantId, '/oauth2/v2.0/token')",
+        "type": "Expression"
+      },
+      "clientId": {
+        "value": "@linkedService().pClientId",
+        "type": "Expression"
+      },
+      "clientSecret": {
+        "value": "@linkedService().pClientSecret",
+        "type": "Expression"
+      },
+      "scope": {
+        "value": "@linkedService().pScope",
+        "type": "Expression"
+      }
+    }
+  }
+}

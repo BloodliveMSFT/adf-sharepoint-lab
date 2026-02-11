@@ -1,0 +1,458 @@
+{
+  "name": "pl_spo_to_adls_downloadUrl",
+  "type": "Microsoft.DataFactory/factories/pipelines",
+  "properties": {
+    "parameters": {
+      "pTenantId": {
+        "type": "string"
+      },
+      "pClientId": {
+        "type": "string"
+      },
+      "pClientSecret": {
+        "type": "secureString"
+      },
+      "pScope": {
+        "type": "string",
+        "defaultValue": "https://graph.microsoft.com/.default"
+      },
+      "pSiteId": {
+        "type": "string"
+      },
+      "pSiteName": {
+        "type": "string"
+      },
+      "pLibraryName": {
+        "type": "string"
+      },
+      "pDriveId": {
+        "type": "string"
+      },
+      "pFolderPath": {
+        "type": "string"
+      },
+      "pSharePointHost": {
+        "type": "string"
+      },
+      "pStorageAccountName": {
+        "type": "string"
+      },
+      "pContainer": {
+        "type": "string",
+        "defaultValue": "landing"
+      },
+      "pMetaContainer": {
+        "type": "string",
+        "defaultValue": "meta"
+      },
+      "pRunDate": {
+        "type": "string",
+        "defaultValue": {
+          "value": "@formatDateTime(utcNow(),'yyyy-MM-dd')",
+          "type": "Expression"
+        }
+      },
+      "pConcurrency": {
+        "type": "int",
+        "defaultValue": 4
+      }
+    },
+    "activities": [
+      {
+        "name": "Copy_Children_To_Meta",
+        "type": "Copy",
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 3,
+          "retryIntervalInSeconds": 30
+        },
+        "typeProperties": {
+          "source": {
+            "type": "RestSource",
+            "httpRequestTimeout": "00:01:40",
+            "requestInterval": "00.00:00:00.010",
+            "jsonPathDefinition": "$.value"
+          },
+          "sink": {
+            "type": "JsonSink",
+            "storeSettings": {
+              "type": "AzureBlobFSWriteSettings"
+            },
+            "formatSettings": {
+              "type": "JsonWriteSettings",
+              "filePattern": "setOfObjects"
+            }
+          },
+          "enableStaging": false
+        },
+        "inputs": [
+          {
+            "referenceName": "ds_rest_graph_json",
+            "type": "DatasetReference",
+            "parameters": {
+              "pRelativeUrl": {
+                "value": "@concat('v1.0/sites/', pipeline().parameters.pSiteId, '/drives/', pipeline().parameters.pDriveId, '/root:/', uriComponent(pipeline().parameters.pFolderPath), ':/children?$select=id,name,file,folder,@microsoft.graph.downloadUrl&$top=200')",
+                "type": "Expression"
+              }
+            }
+          }
+        ],
+        "outputs": [
+          {
+            "referenceName": "ds_adls_meta_json",
+            "type": "DatasetReference",
+            "parameters": {
+              "pContainer": {
+                "value": "@pipeline().parameters.pMetaContainer",
+                "type": "Expression"
+              },
+              "pDirectory": {
+                "value": "@concat('spo_children/dt=', pipeline().parameters.pRunDate)",
+                "type": "Expression"
+              },
+              "pFileName": {
+                "value": "@concat('children_', pipeline().parameters.pRunDate, '.json')",
+                "type": "Expression"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Lookup_Meta",
+        "type": "Lookup",
+        "dependsOn": [
+          {
+            "activity": "Copy_Children_To_Meta",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30
+        },
+        "typeProperties": {
+          "source": {
+            "type": "JsonSource",
+            "storeSettings": {
+              "type": "AzureBlobFSReadSettings",
+              "recursive": false,
+              "enablePartitionDiscovery": false
+            },
+            "formatSettings": {
+              "type": "JsonReadSettings"
+            }
+          },
+          "dataset": {
+            "referenceName": "ds_adls_meta_json",
+            "type": "DatasetReference",
+            "parameters": {
+              "pContainer": {
+                "value": "@pipeline().parameters.pMetaContainer",
+                "type": "Expression"
+              },
+              "pDirectory": {
+                "value": "@concat('spo_children/dt=', pipeline().parameters.pRunDate)",
+                "type": "Expression"
+              },
+              "pFileName": {
+                "value": "@concat('children_', pipeline().parameters.pRunDate, '.json')",
+                "type": "Expression"
+              }
+            }
+          },
+          "firstRowOnly": false
+        }
+      },
+      {
+        "name": "Filter_Files",
+        "type": "Filter",
+        "dependsOn": [
+          {
+            "activity": "Lookup_Meta",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "items": {
+            "value": "@activity('Lookup_Meta').output.value",
+            "type": "Expression"
+          },
+          "condition": {
+            "value": "@not(empty(item().file))",
+            "type": "Expression"
+          }
+        }
+      },
+      {
+        "name": "ForEach_Files",
+        "type": "ForEach",
+        "dependsOn": [
+          {
+            "activity": "Filter_Files",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "items": {
+            "value": "@activity('Filter_Files').output.value",
+            "type": "Expression"
+          },
+          "batchCount": {
+            "value": "@pipeline().parameters.pConcurrency",
+            "type": "Expression"
+          },
+          "isSequential": false,
+          "activities": [
+            {
+              "name": "Copy_Download_HTTP",
+              "type": "Copy",
+              "policy": {
+                "timeout": "0.00:15:00",
+                "retry": 8,
+                "retryIntervalInSeconds": 30
+              },
+              "typeProperties": {
+                "source": {
+                  "type": "BinarySource",
+                  "storeSettings": {
+                    "type": "HttpReadSettings",
+                    "requestMethod": "GET"
+                  }
+                },
+                "sink": {
+                  "type": "BinarySink",
+                  "storeSettings": {
+                    "type": "AzureBlobFSWriteSettings"
+                  }
+                },
+                "enableStaging": false
+              },
+              "inputs": [
+                {
+                  "referenceName": "ds_http_binary",
+                  "type": "DatasetReference",
+                  "parameters": {
+                    "pRelativeUrl": {
+                      "value": "@replace(string(item()['@microsoft.graph.downloadUrl']), concat('https://', pipeline().parameters.pSharePointHost), '')",
+                      "type": "Expression"
+                    }
+                  }
+                }
+              ],
+              "outputs": [
+                {
+                  "referenceName": "ds_adls_binary",
+                  "type": "DatasetReference",
+                  "parameters": {
+                    "pContainer": {
+                      "value": "@pipeline().parameters.pContainer",
+                      "type": "Expression"
+                    },
+                    "pDirectory": {
+                      "value": "@concat('landing/spo/', 'site=', pipeline().parameters.pSiteName, '/', 'library=', pipeline().parameters.pLibraryName, '/', 'driveId=', pipeline().parameters.pDriveId, '/', 'dt=', pipeline().parameters.pRunDate)",
+                      "type": "Expression"
+                    },
+                    "pFileName": {
+                      "value": "@item().name",
+                      "type": "Expression"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Copy_GetItem_RefreshUrl",
+              "type": "Copy",
+              "dependsOn": [
+                {
+                  "activity": "Copy_Download_HTTP",
+                  "dependencyConditions": [
+                    "Failed"
+                  ]
+                }
+              ],
+              "policy": {
+                "timeout": "0.12:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30
+              },
+              "typeProperties": {
+                "source": {
+                  "type": "RestSource",
+                  "httpRequestTimeout": "00:01:40",
+                  "requestInterval": "00.00:00:00.010",
+                  "jsonPathDefinition": "$"
+                },
+                "sink": {
+                  "type": "JsonSink",
+                  "storeSettings": {
+                    "type": "AzureBlobFSWriteSettings"
+                  },
+                  "formatSettings": {
+                    "type": "JsonWriteSettings",
+                    "filePattern": "setOfObjects"
+                  }
+                },
+                "enableStaging": false
+              },
+              "inputs": [
+                {
+                  "referenceName": "ds_rest_graph_json",
+                  "type": "DatasetReference",
+                  "parameters": {
+                    "pRelativeUrl": {
+                      "value": "@concat('v1.0/drives/', pipeline().parameters.pDriveId, '/items/', item().id, '?$select=id,name,@microsoft.graph.downloadUrl')",
+                      "type": "Expression"
+                    }
+                  }
+                }
+              ],
+              "outputs": [
+                {
+                  "referenceName": "ds_adls_meta_json",
+                  "type": "DatasetReference",
+                  "parameters": {
+                    "pContainer": {
+                      "value": "@pipeline().parameters.pMetaContainer",
+                      "type": "Expression"
+                    },
+                    "pDirectory": {
+                      "value": "@concat('spo_tmp/dt=', pipeline().parameters.pRunDate)",
+                      "type": "Expression"
+                    },
+                    "pFileName": {
+                      "value": "@concat(item().id, '.json')",
+                      "type": "Expression"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Lookup_TempMeta",
+              "type": "Lookup",
+              "dependsOn": [
+                {
+                  "activity": "Copy_GetItem_RefreshUrl",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ],
+              "policy": {
+                "timeout": "0.12:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30
+              },
+              "typeProperties": {
+                "source": {
+                  "type": "JsonSource",
+                  "storeSettings": {
+                    "type": "AzureBlobFSReadSettings",
+                    "recursive": false,
+                    "enablePartitionDiscovery": false
+                  },
+                  "formatSettings": {
+                    "type": "JsonReadSettings"
+                  }
+                },
+                "dataset": {
+                  "referenceName": "ds_adls_meta_json",
+                  "type": "DatasetReference",
+                  "parameters": {
+                    "pContainer": {
+                      "value": "@pipeline().parameters.pMetaContainer",
+                      "type": "Expression"
+                    },
+                    "pDirectory": {
+                      "value": "@concat('spo_tmp/dt=', pipeline().parameters.pRunDate)",
+                      "type": "Expression"
+                    },
+                    "pFileName": {
+                      "value": "@concat(item().id, '.json')",
+                      "type": "Expression"
+                    }
+                  }
+                },
+                "firstRowOnly": true
+              }
+            },
+            {
+              "name": "Copy_Download_HTTP_RetryOnce",
+              "type": "Copy",
+              "dependsOn": [
+                {
+                  "activity": "Lookup_TempMeta",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ],
+              "policy": {
+                "timeout": "0.00:15:00",
+                "retry": 1,
+                "retryIntervalInSeconds": 30
+              },
+              "typeProperties": {
+                "source": {
+                  "type": "BinarySource",
+                  "storeSettings": {
+                    "type": "HttpReadSettings",
+                    "requestMethod": "GET"
+                  }
+                },
+                "sink": {
+                  "type": "BinarySink",
+                  "storeSettings": {
+                    "type": "AzureBlobFSWriteSettings"
+                  }
+                },
+                "enableStaging": false
+              },
+              "inputs": [
+                {
+                  "referenceName": "ds_http_binary",
+                  "type": "DatasetReference",
+                  "parameters": {
+                    "pRelativeUrl": {
+                      "value": "@replace(string(activity('Lookup_TempMeta').output.firstRow['@microsoft.graph.downloadUrl']), concat('https://', pipeline().parameters.pSharePointHost), '')",
+                      "type": "Expression"
+                    }
+                  }
+                }
+              ],
+              "outputs": [
+                {
+                  "referenceName": "ds_adls_binary",
+                  "type": "DatasetReference",
+                  "parameters": {
+                    "pContainer": {
+                      "value": "@pipeline().parameters.pContainer",
+                      "type": "Expression"
+                    },
+                    "pDirectory": {
+                      "value": "@concat('landing/spo/', 'site=', pipeline().parameters.pSiteName, '/', 'library=', pipeline().parameters.pLibraryName, '/', 'driveId=', pipeline().parameters.pDriveId, '/', 'dt=', pipeline().parameters.pRunDate)",
+                      "type": "Expression"
+                    },
+                    "pFileName": {
+                      "value": "@item().name",
+                      "type": "Expression"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
